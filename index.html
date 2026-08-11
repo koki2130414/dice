@@ -566,6 +566,8 @@ function buildFace(value) {
 }
 
 function buildDie(scene) {
+  // スクリプトが再実行されても二重生成されないよう、既存の立方体を消してから作る
+  scene.innerHTML = '';
   var cube = document.createElement('div');
   cube.className = 'die-cube';
   var sides = [
@@ -750,11 +752,13 @@ function toggleSound() {
   els.soundToggle.title = soundEnabled ? 'サウンド オン' : 'サウンド オフ';
 }
 
-els.rollButton.addEventListener('click', roll);
-els.resetButton.addEventListener('click', resetHistory);
-els.soundToggle.addEventListener('click', toggleSound);
+// addEventListener だと再実行のたびにリスナーが積み重なるため、
+// 代入式ハンドラで常に1つだけ登録されるようにする
+els.rollButton.onclick = roll;
+els.resetButton.onclick = resetHistory;
+els.soundToggle.onclick = toggleSound;
 
-window.addEventListener('keydown', function (e) {
+window.onkeydown = function (e) {
   if (e.key !== ' ' && e.key !== 'Enter') return;
   if (e.repeat) return;
   var target = e.target;
@@ -762,7 +766,7 @@ window.addEventListener('keydown', function (e) {
   if (target && target.closest && target.closest('button, a, input, select, textarea')) return;
   e.preventDefault();
   roll();
-});
+};
 
 /* 初期表示 */
 if (current) {
