@@ -90,45 +90,22 @@ button { font-family: inherit; }
   padding: 16px 0 8px;
 }
 
-/* --- 3D サイコロ --- */
-.die-scene {
+/* --- 2D フラットサイコロ --- */
+.die {
   width: var(--die-size);
   height: var(--die-size);
-  perspective: calc(var(--die-size) * 6);
-}
-
-.die-cube {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  transform-style: preserve-3d;
-  transition: transform 1s cubic-bezier(.18,.85,.3,1);
-}
-
-.die-side {
-  position: absolute;
-  inset: 0;
   border-radius: 16%;
   background: linear-gradient(145deg, #ffffff 0%, #f2f0ea 55%, #ddd9cf 100%);
-  box-shadow: inset 0 2px 4px rgba(255,255,255,.9), inset 0 -3px 6px rgba(0,0,0,.12);
-  backface-visibility: hidden;
-}
-
-.die-side-front  { transform: translateZ(calc(var(--die-size) / 2)); }
-.die-side-back   { transform: rotateY(180deg) translateZ(calc(var(--die-size) / 2)); }
-.die-side-right  { transform: rotateY(90deg) translateZ(calc(var(--die-size) / 2)); }
-.die-side-left   { transform: rotateY(-90deg) translateZ(calc(var(--die-size) / 2)); }
-.die-side-top    { transform: rotateX(90deg) translateZ(calc(var(--die-size) / 2)); }
-.die-side-bottom { transform: rotateX(-90deg) translateZ(calc(var(--die-size) / 2)); }
-
-.die-face {
-  width: 100%;
-  height: 100%;
+  box-shadow:
+    inset 0 2px 4px rgba(255,255,255,.9),
+    inset 0 -3px 6px rgba(0,0,0,.12),
+    0 8px 18px rgba(0,0,0,.4);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   grid-template-rows: repeat(3, 1fr);
   place-items: center;
-  padding: 14%;
+  /* %指定は親要素の幅基準になるため、サイコロ自身のサイズ基準で指定する */
+  padding: calc(var(--die-size) * 0.14);
 }
 
 .pip {
@@ -144,6 +121,36 @@ button { font-family: inherit; }
   background: radial-gradient(circle at 35% 30%, #e4574f, #b01c17 70%);
   max-width: calc(var(--die-size) * .3);
   box-shadow: inset 0 2px 4px rgba(90,0,0,.55), 0 1px 0 rgba(255,255,255,.5);
+}
+
+/* 振っている間のシェイク (2個目は逆向き・少し遅れて動く) */
+.die-rolling-1 { animation: die-shake-1 .5s ease-in-out 2; }
+.die-rolling-2 { animation: die-shake-2 .5s ease-in-out 2; }
+
+@keyframes die-shake-1 {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  20%  { transform: translate(-7px, -14px) rotate(-14deg); }
+  40%  { transform: translate(8px, 5px) rotate(11deg); }
+  60%  { transform: translate(-6px, -9px) rotate(-8deg); }
+  80%  { transform: translate(5px, 3px) rotate(6deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+@keyframes die-shake-2 {
+  0%   { transform: translate(0, 0) rotate(0deg); }
+  20%  { transform: translate(7px, -12px) rotate(13deg); }
+  40%  { transform: translate(-8px, 6px) rotate(-10deg); }
+  60%  { transform: translate(6px, -8px) rotate(9deg); }
+  80%  { transform: translate(-5px, 4px) rotate(-5deg); }
+  100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+/* 停止した瞬間に軽く弾む */
+.die-landed { animation: die-land .3s cubic-bezier(.34,1.56,.64,1); }
+
+@keyframes die-land {
+  0%   { transform: scale(1.12); }
+  100% { transform: scale(1); }
 }
 
 /* --- 結果表示 --- */
@@ -362,7 +369,7 @@ button { font-family: inherit; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .die-cube { transition-duration: .2s; }
+  .die-rolling-1, .die-rolling-2, .die-landed { animation: none; }
   .confetti { display: none; }
   .doubles-visible { animation: none; }
   .total, .doubles-badge { transition-duration: .01s; }
@@ -378,8 +385,8 @@ button { font-family: inherit; }
 
   <main class="board">
     <div class="dice-area">
-      <div class="die-scene" id="die1" role="img" aria-label="1個目のサイコロ: 1"><div class="die-cube"><div class="die-side die-side-front"><div class="die-face"><span></span><span></span><span></span><span></span><span class="pip pip-red"></span><span></span><span></span><span></span><span></span></div></div><div class="die-side die-side-back"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span class="pip"></span><span></span><span class="pip"></span><span class="pip"></span><span></span><span class="pip"></span></div></div><div class="die-side die-side-right"><div class="die-face"><span></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span></span></div></div><div class="die-side die-side-left"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span></span><span></span><span></span><span class="pip"></span><span></span><span class="pip"></span></div></div><div class="die-side die-side-top"><div class="die-face"><span></span><span></span><span class="pip"></span><span></span><span></span><span></span><span class="pip"></span><span></span><span></span></div></div><div class="die-side die-side-bottom"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span></div></div></div></div>
-      <div class="die-scene" id="die2" role="img" aria-label="2個目のサイコロ: 1"><div class="die-cube"><div class="die-side die-side-front"><div class="die-face"><span></span><span></span><span></span><span></span><span class="pip pip-red"></span><span></span><span></span><span></span><span></span></div></div><div class="die-side die-side-back"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span class="pip"></span><span></span><span class="pip"></span><span class="pip"></span><span></span><span class="pip"></span></div></div><div class="die-side die-side-right"><div class="die-face"><span></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span></span></div></div><div class="die-side die-side-left"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span></span><span></span><span></span><span class="pip"></span><span></span><span class="pip"></span></div></div><div class="die-side die-side-top"><div class="die-face"><span></span><span></span><span class="pip"></span><span></span><span></span><span></span><span class="pip"></span><span></span><span></span></div></div><div class="die-side die-side-bottom"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span></div></div></div></div>
+      <div class="die" id="die1" role="img" aria-label="1個目のサイコロ: 1"><span></span><span></span><span></span><span></span><span class="pip pip-red"></span><span></span><span></span><span></span><span></span></div>
+      <div class="die" id="die2" role="img" aria-label="2個目のサイコロ: 1"><span></span><span></span><span></span><span></span><span class="pip pip-red"></span><span></span><span></span><span></span><span></span></div>
     </div>
 
     <div class="result-area">
@@ -473,9 +480,9 @@ function loadState() {
   return { history: history, rollCount: rollCount };
 }
 
-function saveState(history, rollCount) {
-  safeSet(HISTORY_KEY, JSON.stringify(history.slice(0, HISTORY_LIMIT)));
-  safeSet(COUNT_KEY, String(rollCount));
+function saveState(historyList, count) {
+  safeSet(HISTORY_KEY, JSON.stringify(historyList.slice(0, HISTORY_LIMIT)));
+  safeSet(COUNT_KEY, String(count));
 }
 
 /* ========== Web Audio 効果音 ========== */
@@ -537,59 +544,22 @@ function playDoublesSound() {
   });
 }
 
-/* ========== 3D サイコロの描画 ========== */
-var FACE_ROTATIONS = {
-  1: { x: 0, y: 0 },
-  2: { x: -90, y: 0 },
-  3: { x: 0, y: -90 },
-  4: { x: 0, y: 90 },
-  5: { x: 90, y: 0 },
-  6: { x: 0, y: 180 },
-};
-
+/* ========== 2D サイコロの描画 ========== */
 var PIP_LAYOUTS = {
   1: [5], 2: [3, 7], 3: [3, 5, 7],
   4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9],
 };
 
-function buildFace(value) {
-  var face = document.createElement('div');
-  face.className = 'die-face';
+/* 目を描き替える。再実行されても二重生成されないよう毎回作り直す */
+function setDieFace(die, value) {
+  die.innerHTML = '';
   for (var cell = 1; cell <= 9; cell++) {
     var span = document.createElement('span');
     if (PIP_LAYOUTS[value].indexOf(cell) !== -1) {
       span.className = 'pip' + (value === 1 ? ' pip-red' : '');
     }
-    face.appendChild(span);
+    die.appendChild(span);
   }
-  return face;
-}
-
-function buildDie(scene) {
-  // スクリプトが再実行されても二重生成されないよう、既存の立方体を消してから作る
-  scene.innerHTML = '';
-  var cube = document.createElement('div');
-  cube.className = 'die-cube';
-  var sides = [
-    ['front', 1], ['back', 6], ['right', 3],
-    ['left', 4], ['top', 2], ['bottom', 5],
-  ];
-  sides.forEach(function (s) {
-    var side = document.createElement('div');
-    side.className = 'die-side die-side-' + s[0];
-    side.appendChild(buildFace(s[1]));
-    cube.appendChild(side);
-  });
-  scene.appendChild(cube);
-  return cube;
-}
-
-/* 毎回1回転以上追加して必ず転がって見せる。2個は逆回転 */
-function setDieFace(cube, value, rollId, direction) {
-  var rot = FACE_ROTATIONS[value];
-  var spin = rollId * 360 * direction;
-  cube.style.transform =
-    'rotateX(' + (rot.x + spin) + 'deg) rotateY(' + (rot.y + spin) + 'deg)';
 }
 
 /* ========== 紙吹雪 ========== */
@@ -619,6 +589,7 @@ function showConfetti() {
 /* ========== アプリ本体 ========== */
 var ROLL_DURATION_MS = 1000;
 var REDUCED_ROLL_DURATION_MS = 250;
+var TUMBLE_INTERVAL_MS = 100;
 
 // 注意: グローバルで "history" を使うと window.history と衝突するため rollHistory にする
 var state = loadState();
@@ -626,12 +597,11 @@ var rollHistory = state.history;
 var rollCount = state.rollCount;
 var soundEnabled = safeGet(SOUND_KEY) !== 'off';
 var rolling = false;
-var rollId = 0;
 var current = rollHistory.length > 0 ? rollHistory[0] : null;
 
 var els = {
-  die1Scene: document.getElementById('die1'),
-  die2Scene: document.getElementById('die2'),
+  die1: document.getElementById('die1'),
+  die2: document.getElementById('die2'),
   totalBox: document.getElementById('total'),
   totalValue: document.getElementById('total-value'),
   doublesBadge: document.getElementById('doubles-badge'),
@@ -643,14 +613,9 @@ var els = {
   announcer: document.getElementById('announcer'),
 };
 
-var cube1 = buildDie(els.die1Scene);
-var cube2 = buildDie(els.die2Scene);
-
 function prefersReducedMotion() {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
-
-function escapeless(n) { return String(n); } // 履歴は数値のみを描画する
 
 function renderHistory() {
   els.rollCountEl.textContent = '通算 ' + rollCount + ' 回';
@@ -662,10 +627,10 @@ function renderHistory() {
   var rows = rollHistory.map(function (h, i) {
     return (
       '<tr' + (h.isDoubles ? ' class="row-doubles"' : '') + '>' +
-      '<td>' + escapeless(rollCount - i) + '</td>' +
-      '<td>' + escapeless(h.die1) + '</td>' +
-      '<td>' + escapeless(h.die2) + '</td>' +
-      '<td class="cell-total">' + escapeless(h.total) + '</td>' +
+      '<td>' + (rollCount - i) + '</td>' +
+      '<td>' + h.die1 + '</td>' +
+      '<td>' + h.die2 + '</td>' +
+      '<td class="cell-total">' + h.total + '</td>' +
       '<td>' + (h.isDoubles ? '★' : '') + '</td>' +
       '</tr>'
     );
@@ -684,9 +649,11 @@ function renderResult() {
 }
 
 function updateDiceLabels(d1, d2) {
-  els.die1Scene.setAttribute('aria-label', '1個目のサイコロ: ' + d1);
-  els.die2Scene.setAttribute('aria-label', '2個目のサイコロ: ' + d2);
+  els.die1.setAttribute('aria-label', '1個目のサイコロ: ' + d1);
+  els.die2.setAttribute('aria-label', '2個目のサイコロ: ' + d2);
 }
+
+var tumbleTimer = null;
 
 function roll() {
   if (rolling) return;
@@ -698,15 +665,37 @@ function roll() {
 
   var result = rollDice();
   current = result;
-  rollId++;
-  setDieFace(cube1, result.die1, rollId, 1);
-  setDieFace(cube2, result.die2, rollId, -1);
-  renderResult();
   if (soundEnabled) playRollSound();
 
-  var duration = prefersReducedMotion() ? REDUCED_ROLL_DURATION_MS : ROLL_DURATION_MS;
+  var reduced = prefersReducedMotion();
+  var duration = reduced ? REDUCED_ROLL_DURATION_MS : ROLL_DURATION_MS;
+
+  els.die1.classList.remove('die-landed');
+  els.die2.classList.remove('die-landed');
+  if (!reduced) {
+    els.die1.classList.add('die-rolling-1');
+    els.die2.classList.add('die-rolling-2');
+    // 転がっている間、目を高速で切り替える
+    tumbleTimer = setInterval(function () {
+      setDieFace(els.die1, rollDie());
+      setDieFace(els.die2, rollDie());
+    }, TUMBLE_INTERVAL_MS);
+  }
+  renderResult();
 
   setTimeout(function () {
+    if (tumbleTimer !== null) {
+      clearInterval(tumbleTimer);
+      tumbleTimer = null;
+    }
+    els.die1.classList.remove('die-rolling-1');
+    els.die2.classList.remove('die-rolling-2');
+    setDieFace(els.die1, result.die1);
+    setDieFace(els.die2, result.die2);
+    if (!reduced) {
+      els.die1.classList.add('die-landed');
+      els.die2.classList.add('die-landed');
+    }
     rolling = false;
     els.rollButton.disabled = false;
     els.rollButton.textContent = 'サイコロを振る';
@@ -722,7 +711,7 @@ function roll() {
       '、合計' + result.total + (result.isDoubles ? '。ゾロ目です！' : '');
     if (result.isDoubles) {
       els.doublesBadge.classList.add('doubles-visible');
-      if (!prefersReducedMotion()) showConfetti();
+      if (!reduced) showConfetti();
       if (soundEnabled) playDoublesSound();
       setTimeout(function () {
         els.doublesBadge.classList.remove('doubles-visible');
@@ -737,6 +726,9 @@ function resetHistory() {
   current = null;
   saveState(rollHistory, rollCount);
   els.doublesBadge.classList.remove('doubles-visible');
+  setDieFace(els.die1, 1);
+  setDieFace(els.die2, 1);
+  updateDiceLabels(1, 1);
   renderHistory();
   renderResult();
   els.announcer.textContent = '履歴をリセットしました';
@@ -769,11 +761,9 @@ window.onkeydown = function (e) {
 };
 
 /* 初期表示 */
-if (current) {
-  setDieFace(cube1, current.die1, 0, 1);
-  setDieFace(cube2, current.die2, 0, -1);
-  updateDiceLabels(current.die1, current.die2);
-}
+setDieFace(els.die1, current ? current.die1 : 1);
+setDieFace(els.die2, current ? current.die2 : 1);
+if (current) updateDiceLabels(current.die1, current.die2);
 if (!soundEnabled) {
   els.soundToggle.textContent = '🔇';
   els.soundToggle.setAttribute('aria-pressed', 'false');
