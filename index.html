@@ -1,0 +1,784 @@
+<html lang="ja"><head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ダイスロール - 2個のサイコロ</title>
+<style>
+:root {
+  --die-size: clamp(76px, 20vw, 128px);
+}
+
+* { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  font-family: 'Hiragino Sans', 'Noto Sans JP', 'Yu Gothic UI', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  color-scheme: dark;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(255,255,255,.06), transparent 55%),
+    radial-gradient(ellipse at 50% 110%, rgba(0,0,0,.5), transparent 60%),
+    linear-gradient(180deg, #123f28 0%, #0b2e1c 55%, #071f13 100%);
+  color: #f0ead7;
+}
+
+button { font-family: inherit; }
+
+:focus-visible {
+  outline: 3px solid #f2c14e;
+  outline-offset: 3px;
+}
+
+.app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 20px 16px 40px;
+}
+
+.header {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.4rem, 4vw, 1.9rem);
+  letter-spacing: .12em;
+  color: #f5f1e6;
+  text-shadow: 0 2px 6px rgba(0,0,0,.5);
+}
+
+.sound-toggle {
+  font-size: 1.3rem;
+  line-height: 1;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.25);
+  background: rgba(0,0,0,.25);
+  cursor: pointer;
+  transition: transform .1s ease, background .2s ease;
+}
+.sound-toggle:hover { background: rgba(0,0,0,.4); }
+.sound-toggle:active { transform: scale(.92); }
+
+.board {
+  width: 100%;
+  max-width: 640px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  padding: 32px 20px;
+  border-radius: 24px;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.08), transparent 60%),
+    linear-gradient(160deg, #0f5132 0%, #0a3d24 60%, #072b1a 100%);
+  border: 2px solid #d4af5a;
+  box-shadow: 0 20px 50px rgba(0,0,0,.45), inset 0 0 60px rgba(0,0,0,.35);
+}
+
+.dice-area {
+  display: flex;
+  gap: clamp(24px, 8vw, 56px);
+  padding: 16px 0 8px;
+}
+
+/* --- 3D サイコロ --- */
+.die-scene {
+  width: var(--die-size);
+  height: var(--die-size);
+  perspective: calc(var(--die-size) * 6);
+}
+
+.die-cube {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 1s cubic-bezier(.18,.85,.3,1);
+}
+
+.die-side {
+  position: absolute;
+  inset: 0;
+  border-radius: 16%;
+  background: linear-gradient(145deg, #ffffff 0%, #f2f0ea 55%, #ddd9cf 100%);
+  box-shadow: inset 0 2px 4px rgba(255,255,255,.9), inset 0 -3px 6px rgba(0,0,0,.12);
+  backface-visibility: hidden;
+}
+
+.die-side-front  { transform: translateZ(calc(var(--die-size) / 2)); }
+.die-side-back   { transform: rotateY(180deg) translateZ(calc(var(--die-size) / 2)); }
+.die-side-right  { transform: rotateY(90deg) translateZ(calc(var(--die-size) / 2)); }
+.die-side-left   { transform: rotateY(-90deg) translateZ(calc(var(--die-size) / 2)); }
+.die-side-top    { transform: rotateX(90deg) translateZ(calc(var(--die-size) / 2)); }
+.die-side-bottom { transform: rotateX(-90deg) translateZ(calc(var(--die-size) / 2)); }
+
+.die-face {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: repeat(3, 1fr);
+  place-items: center;
+  padding: 14%;
+}
+
+.pip {
+  width: 100%;
+  aspect-ratio: 1;
+  max-width: calc(var(--die-size) * .16);
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #4a4a4a, #111 70%);
+  box-shadow: inset 0 2px 3px rgba(0,0,0,.6), 0 1px 0 rgba(255,255,255,.5);
+}
+
+.pip-red {
+  background: radial-gradient(circle at 35% 30%, #e4574f, #b01c17 70%);
+  max-width: calc(var(--die-size) * .3);
+  box-shadow: inset 0 2px 4px rgba(90,0,0,.55), 0 1px 0 rgba(255,255,255,.5);
+}
+
+/* --- 結果表示 --- */
+.result-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-height: 118px;
+}
+
+.total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: .35;
+  transform: scale(.95);
+  transition: opacity .3s ease, transform .3s ease;
+}
+.total-visible { opacity: 1; transform: scale(1); }
+
+.total-label {
+  font-size: .85rem;
+  letter-spacing: .3em;
+  color: #d9d2be;
+}
+
+.total-value {
+  font-size: clamp(2.6rem, 9vw, 3.8rem);
+  font-weight: 700;
+  line-height: 1.1;
+  color: #f7f3e8;
+  text-shadow: 0 3px 10px rgba(0,0,0,.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.doubles-badge {
+  padding: 6px 22px;
+  border-radius: 999px;
+  background: linear-gradient(150deg, #e05048, #a8140e);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: .15em;
+  box-shadow: 0 4px 14px rgba(180,20,12,.55);
+  opacity: 0;
+  transform: scale(.6);
+  transition: opacity .25s ease, transform .25s cubic-bezier(.34,1.56,.64,1);
+  pointer-events: none;
+}
+
+.doubles-visible {
+  opacity: 1;
+  transform: scale(1);
+  animation: doubles-pulse 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes doubles-pulse {
+  from { box-shadow: 0 4px 14px rgba(180,20,12,.55); }
+  to   { box-shadow: 0 4px 26px rgba(255,90,70,.9); }
+}
+
+/* --- ボタン --- */
+.roll-button {
+  font-size: clamp(1.05rem, 3.5vw, 1.25rem);
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: #fff;
+  padding: 16px 44px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #e05048 0%, #c22a22 55%, #9c1710 100%);
+  box-shadow: 0 6px 0 #6d0d08, 0 12px 24px rgba(0,0,0,.45);
+  cursor: pointer;
+  transition: transform .08s ease, box-shadow .08s ease, filter .2s ease;
+  touch-action: manipulation;
+}
+.roll-button:hover:not(:disabled) { filter: brightness(1.08); }
+.roll-button:active:not(:disabled) {
+  transform: translateY(5px);
+  box-shadow: 0 1px 0 #6d0d08, 0 4px 10px rgba(0,0,0,.4);
+}
+.roll-button:disabled {
+  filter: saturate(.55) brightness(.85);
+  cursor: default;
+  transform: translateY(3px);
+  box-shadow: 0 3px 0 #6d0d08, 0 6px 14px rgba(0,0,0,.35);
+}
+
+.hint {
+  margin: 0;
+  font-size: .8rem;
+  color: rgba(245,241,230,.65);
+}
+
+/* --- 履歴 --- */
+.history-panel {
+  width: 100%;
+  max-width: 640px;
+  border-radius: 18px;
+  background: rgba(0,0,0,.3);
+  border: 1px solid rgba(212,175,90,.4);
+  padding: 18px 20px 20px;
+}
+
+.history-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.history-title {
+  margin: 0;
+  font-size: 1.05rem;
+  color: #f0ead7;
+  letter-spacing: .08em;
+}
+
+.roll-count {
+  font-size: .85rem;
+  font-weight: 400;
+  color: rgba(240,234,215,.7);
+  margin-left: 8px;
+}
+
+.reset-button {
+  font-size: .85rem;
+  color: #f0ead7;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(240,234,215,.4);
+  background: transparent;
+  cursor: pointer;
+  transition: background .15s ease, transform .1s ease;
+}
+.reset-button:hover:not(:disabled) { background: rgba(255,255,255,.1); }
+.reset-button:active:not(:disabled) { transform: scale(.95); }
+.reset-button:disabled { opacity: .4; cursor: default; }
+
+.history-empty {
+  margin: 8px 0 0;
+  color: rgba(240,234,215,.6);
+  font-size: .9rem;
+}
+
+.history-table-wrap { overflow-x: auto; }
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .95rem;
+  color: #f0ead7;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-table th,
+.history-table td {
+  padding: 8px 10px;
+  text-align: center;
+  border-bottom: 1px solid rgba(255,255,255,.09);
+}
+
+.history-table th {
+  font-size: .78rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  color: rgba(240,234,215,.65);
+}
+
+.history-table tbody tr:last-child td { border-bottom: none; }
+.cell-total { font-weight: 700; }
+.row-doubles td {
+  background: rgba(212,65,55,.16);
+  color: #ffd9d5;
+}
+
+/* --- 紙吹雪 --- */
+.confetti {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 50;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  border-radius: 2px;
+  opacity: 0;
+  animation-name: confetti-fall;
+  animation-timing-function: ease-in;
+  animation-fill-mode: forwards;
+}
+
+@keyframes confetti-fall {
+  0%   { opacity: 1;  transform: translate3d(0, 0, 0) rotate(0deg); }
+  100% { opacity: .9; transform: translate3d(var(--drift, 0px), 105vh, 0) rotate(540deg); }
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@media (max-width: 480px) {
+  .board { padding: 24px 14px; }
+  .roll-button { width: 100%; max-width: 320px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .die-cube { transition-duration: .2s; }
+  .confetti { display: none; }
+  .doubles-visible { animation: none; }
+  .total, .doubles-badge { transition-duration: .01s; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <h1 class="title">ダイスロール</h1>
+    <button type="button" id="sound-toggle" class="sound-toggle" aria-pressed="true" aria-label="サウンドをオフにする" title="サウンド オン">🔊</button>
+  </header>
+
+  <main class="board">
+    <div class="dice-area">
+      <div class="die-scene" id="die1" role="img" aria-label="1個目のサイコロ: 1"><div class="die-cube"><div class="die-side die-side-front"><div class="die-face"><span></span><span></span><span></span><span></span><span class="pip pip-red"></span><span></span><span></span><span></span><span></span></div></div><div class="die-side die-side-back"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span class="pip"></span><span></span><span class="pip"></span><span class="pip"></span><span></span><span class="pip"></span></div></div><div class="die-side die-side-right"><div class="die-face"><span></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span></span></div></div><div class="die-side die-side-left"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span></span><span></span><span></span><span class="pip"></span><span></span><span class="pip"></span></div></div><div class="die-side die-side-top"><div class="die-face"><span></span><span></span><span class="pip"></span><span></span><span></span><span></span><span class="pip"></span><span></span><span></span></div></div><div class="die-side die-side-bottom"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span></div></div></div></div>
+      <div class="die-scene" id="die2" role="img" aria-label="2個目のサイコロ: 1"><div class="die-cube"><div class="die-side die-side-front"><div class="die-face"><span></span><span></span><span></span><span></span><span class="pip pip-red"></span><span></span><span></span><span></span><span></span></div></div><div class="die-side die-side-back"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span class="pip"></span><span></span><span class="pip"></span><span class="pip"></span><span></span><span class="pip"></span></div></div><div class="die-side die-side-right"><div class="die-face"><span></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span></span></div></div><div class="die-side die-side-left"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span></span><span></span><span></span><span class="pip"></span><span></span><span class="pip"></span></div></div><div class="die-side die-side-top"><div class="die-face"><span></span><span></span><span class="pip"></span><span></span><span></span><span></span><span class="pip"></span><span></span><span></span></div></div><div class="die-side die-side-bottom"><div class="die-face"><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span><span></span><span class="pip"></span></div></div></div></div>
+    </div>
+
+    <div class="result-area">
+      <div class="total" id="total">
+        <span class="total-label">合計</span>
+        <span class="total-value" id="total-value">–</span>
+      </div>
+      <div class="doubles-badge" id="doubles-badge" role="status">ゾロ目！</div>
+    </div>
+
+    <button type="button" id="roll-button" class="roll-button">サイコロを振る</button>
+    <p class="hint">Space / Enter キーでも振れます</p>
+  </main>
+
+  <section class="history-panel" aria-label="履歴">
+    <div class="history-header">
+      <h2 class="history-title">履歴 <span class="roll-count" id="roll-count">通算 0 回</span></h2>
+      <button type="button" id="reset-button" class="reset-button" disabled="">履歴をリセット</button>
+    </div>
+    <div id="history-body"><p class="history-empty">まだ履歴がありません</p></div>
+  </section>
+
+  <div class="visually-hidden" role="status" aria-live="polite" id="announcer"></div>
+</div>
+
+<script>
+'use strict';
+
+/* ========== サイコロのロジック (乱数は差し替え可能) ========== */
+function rollDie(random) {
+  random = random || Math.random;
+  return Math.floor(random() * 6) + 1;
+}
+
+function rollDice(random) {
+  var die1 = rollDie(random);
+  var die2 = rollDie(random);
+  return {
+    die1: die1,
+    die2: die2,
+    total: die1 + die2,
+    isDoubles: die1 === die2,
+    timestamp: Date.now(),
+  };
+}
+
+/* ========== localStorage (利用不可でも壊れない) ========== */
+var HISTORY_KEY = 'dice-roller/history';
+var COUNT_KEY = 'dice-roller/count';
+var SOUND_KEY = 'dice-roller/sound';
+var HISTORY_LIMIT = 10;
+
+function safeGet(key) {
+  try { return window.localStorage.getItem(key); } catch (e) { return null; }
+}
+function safeSet(key, value) {
+  try { window.localStorage.setItem(key, value); } catch (e) { /* 永続化なしで続行 */ }
+}
+
+function isDieFace(v) {
+  return typeof v === 'number' && Number.isInteger(v) && v >= 1 && v <= 6;
+}
+
+function loadState() {
+  var rollCount = 0;
+  var rawCount = safeGet(COUNT_KEY);
+  if (rawCount !== null && isFinite(Number(rawCount))) rollCount = Math.max(0, Number(rawCount));
+  var history = [];
+  var raw = safeGet(HISTORY_KEY);
+  if (raw !== null) {
+    try {
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        history = parsed
+          .filter(function (it) {
+            return it && typeof it === 'object' && isDieFace(it.die1) && isDieFace(it.die2);
+          })
+          .map(function (it) {
+            return {
+              die1: it.die1,
+              die2: it.die2,
+              total: it.die1 + it.die2,
+              isDoubles: it.die1 === it.die2,
+              timestamp: typeof it.timestamp === 'number' ? it.timestamp : 0,
+            };
+          })
+          .slice(0, HISTORY_LIMIT);
+      }
+    } catch (e) { history = []; }
+  }
+  return { history: history, rollCount: rollCount };
+}
+
+function saveState(history, rollCount) {
+  safeSet(HISTORY_KEY, JSON.stringify(history.slice(0, HISTORY_LIMIT)));
+  safeSet(COUNT_KEY, String(rollCount));
+}
+
+/* ========== Web Audio 効果音 ========== */
+var audioCtx = null;
+function getAudioContext() {
+  try {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    return audioCtx;
+  } catch (e) { return null; }
+}
+
+function playRollSound() {
+  var ac = getAudioContext();
+  if (!ac) return;
+  var now = ac.currentTime;
+  for (var i = 0; i < 5; i++) {
+    var t = now + i * 0.09 + Math.random() * 0.03;
+    var dur = 0.05;
+    var buffer = ac.createBuffer(1, Math.ceil(ac.sampleRate * dur), ac.sampleRate);
+    var data = buffer.getChannelData(0);
+    for (var j = 0; j < data.length; j++) {
+      data[j] = (Math.random() * 2 - 1) * (1 - j / data.length);
+    }
+    var src = ac.createBufferSource();
+    src.buffer = buffer;
+    var filter = ac.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.value = 1800 + Math.random() * 1200;
+    filter.Q.value = 1.2;
+    var gain = ac.createGain();
+    gain.gain.setValueAtTime(0.35 * (1 - i * 0.12), t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    src.connect(filter);
+    filter.connect(gain);
+    gain.connect(ac.destination);
+    src.start(t);
+    src.stop(t + dur);
+  }
+}
+
+function playDoublesSound() {
+  var ac = getAudioContext();
+  if (!ac) return;
+  var now = ac.currentTime;
+  [523.25, 659.25, 783.99].forEach(function (freq, i) {
+    var t = now + i * 0.1;
+    var osc = ac.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = freq;
+    var gain = ac.createGain();
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.exponentialRampToValueAtTime(0.25, t + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    osc.connect(gain);
+    gain.connect(ac.destination);
+    osc.start(t);
+    osc.stop(t + 0.5);
+  });
+}
+
+/* ========== 3D サイコロの描画 ========== */
+var FACE_ROTATIONS = {
+  1: { x: 0, y: 0 },
+  2: { x: -90, y: 0 },
+  3: { x: 0, y: -90 },
+  4: { x: 0, y: 90 },
+  5: { x: 90, y: 0 },
+  6: { x: 0, y: 180 },
+};
+
+var PIP_LAYOUTS = {
+  1: [5], 2: [3, 7], 3: [3, 5, 7],
+  4: [1, 3, 7, 9], 5: [1, 3, 5, 7, 9], 6: [1, 3, 4, 6, 7, 9],
+};
+
+function buildFace(value) {
+  var face = document.createElement('div');
+  face.className = 'die-face';
+  for (var cell = 1; cell <= 9; cell++) {
+    var span = document.createElement('span');
+    if (PIP_LAYOUTS[value].indexOf(cell) !== -1) {
+      span.className = 'pip' + (value === 1 ? ' pip-red' : '');
+    }
+    face.appendChild(span);
+  }
+  return face;
+}
+
+function buildDie(scene) {
+  var cube = document.createElement('div');
+  cube.className = 'die-cube';
+  var sides = [
+    ['front', 1], ['back', 6], ['right', 3],
+    ['left', 4], ['top', 2], ['bottom', 5],
+  ];
+  sides.forEach(function (s) {
+    var side = document.createElement('div');
+    side.className = 'die-side die-side-' + s[0];
+    side.appendChild(buildFace(s[1]));
+    cube.appendChild(side);
+  });
+  scene.appendChild(cube);
+  return cube;
+}
+
+/* 毎回1回転以上追加して必ず転がって見せる。2個は逆回転 */
+function setDieFace(cube, value, rollId, direction) {
+  var rot = FACE_ROTATIONS[value];
+  var spin = rollId * 360 * direction;
+  cube.style.transform =
+    'rotateX(' + (rot.x + spin) + 'deg) rotateY(' + (rot.y + spin) + 'deg)';
+}
+
+/* ========== 紙吹雪 ========== */
+var CONFETTI_COLORS = ['#d43f38', '#f5f1e6', '#1f1f1f', '#e8b23a', '#f0f0f0'];
+
+function showConfetti() {
+  var wrap = document.createElement('div');
+  wrap.className = 'confetti';
+  wrap.setAttribute('aria-hidden', 'true');
+  for (var i = 0; i < 28; i++) {
+    var p = document.createElement('span');
+    p.className = 'confetti-piece';
+    var size = 6 + ((i * 11) % 8);
+    p.style.left = ((i * 37) % 100) + '%';
+    p.style.animationDelay = (((i * 13) % 40) / 100) + 's';
+    p.style.animationDuration = (1 + ((i * 7) % 60) / 100) + 's';
+    p.style.backgroundColor = CONFETTI_COLORS[i % CONFETTI_COLORS.length];
+    p.style.width = size + 'px';
+    p.style.height = (size * 0.45) + 'px';
+    p.style.setProperty('--drift', (((i * 23) % 80) - 40) + 'px');
+    wrap.appendChild(p);
+  }
+  document.body.appendChild(wrap);
+  setTimeout(function () { wrap.remove(); }, 2500);
+}
+
+/* ========== アプリ本体 ========== */
+var ROLL_DURATION_MS = 1000;
+var REDUCED_ROLL_DURATION_MS = 250;
+
+// 注意: グローバルで "history" を使うと window.history と衝突するため rollHistory にする
+var state = loadState();
+var rollHistory = state.history;
+var rollCount = state.rollCount;
+var soundEnabled = safeGet(SOUND_KEY) !== 'off';
+var rolling = false;
+var rollId = 0;
+var current = rollHistory.length > 0 ? rollHistory[0] : null;
+
+var els = {
+  die1Scene: document.getElementById('die1'),
+  die2Scene: document.getElementById('die2'),
+  totalBox: document.getElementById('total'),
+  totalValue: document.getElementById('total-value'),
+  doublesBadge: document.getElementById('doubles-badge'),
+  rollButton: document.getElementById('roll-button'),
+  resetButton: document.getElementById('reset-button'),
+  soundToggle: document.getElementById('sound-toggle'),
+  rollCountEl: document.getElementById('roll-count'),
+  historyBody: document.getElementById('history-body'),
+  announcer: document.getElementById('announcer'),
+};
+
+var cube1 = buildDie(els.die1Scene);
+var cube2 = buildDie(els.die2Scene);
+
+function prefersReducedMotion() {
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+function escapeless(n) { return String(n); } // 履歴は数値のみを描画する
+
+function renderHistory() {
+  els.rollCountEl.textContent = '通算 ' + rollCount + ' 回';
+  els.resetButton.disabled = rollHistory.length === 0 && rollCount === 0;
+  if (rollHistory.length === 0) {
+    els.historyBody.innerHTML = '<p class="history-empty">まだ履歴がありません</p>';
+    return;
+  }
+  var rows = rollHistory.map(function (h, i) {
+    return (
+      '<tr' + (h.isDoubles ? ' class="row-doubles"' : '') + '>' +
+      '<td>' + escapeless(rollCount - i) + '</td>' +
+      '<td>' + escapeless(h.die1) + '</td>' +
+      '<td>' + escapeless(h.die2) + '</td>' +
+      '<td class="cell-total">' + escapeless(h.total) + '</td>' +
+      '<td>' + (h.isDoubles ? '★' : '') + '</td>' +
+      '</tr>'
+    );
+  }).join('');
+  els.historyBody.innerHTML =
+    '<div class="history-table-wrap"><table class="history-table">' +
+    '<thead><tr><th scope="col">#</th><th scope="col">1個目</th>' +
+    '<th scope="col">2個目</th><th scope="col">合計</th><th scope="col">ゾロ目</th></tr></thead>' +
+    '<tbody>' + rows + '</tbody></table></div>';
+}
+
+function renderResult() {
+  var show = current !== null && !rolling;
+  els.totalBox.classList.toggle('total-visible', show);
+  els.totalValue.textContent = show ? String(current.total) : '–';
+}
+
+function updateDiceLabels(d1, d2) {
+  els.die1Scene.setAttribute('aria-label', '1個目のサイコロ: ' + d1);
+  els.die2Scene.setAttribute('aria-label', '2個目のサイコロ: ' + d2);
+}
+
+function roll() {
+  if (rolling) return;
+  rolling = true;
+  els.rollButton.disabled = true;
+  els.rollButton.textContent = '転がっています…';
+  els.doublesBadge.classList.remove('doubles-visible');
+  els.announcer.textContent = 'サイコロを振っています';
+
+  var result = rollDice();
+  current = result;
+  rollId++;
+  setDieFace(cube1, result.die1, rollId, 1);
+  setDieFace(cube2, result.die2, rollId, -1);
+  renderResult();
+  if (soundEnabled) playRollSound();
+
+  var duration = prefersReducedMotion() ? REDUCED_ROLL_DURATION_MS : ROLL_DURATION_MS;
+
+  setTimeout(function () {
+    rolling = false;
+    els.rollButton.disabled = false;
+    els.rollButton.textContent = 'サイコロを振る';
+    rollHistory.unshift(result);
+    rollHistory = rollHistory.slice(0, HISTORY_LIMIT);
+    rollCount++;
+    saveState(rollHistory, rollCount);
+    updateDiceLabels(result.die1, result.die2);
+    renderHistory();
+    renderResult();
+    els.announcer.textContent =
+      '1個目は' + result.die1 + '、2個目は' + result.die2 +
+      '、合計' + result.total + (result.isDoubles ? '。ゾロ目です！' : '');
+    if (result.isDoubles) {
+      els.doublesBadge.classList.add('doubles-visible');
+      if (!prefersReducedMotion()) showConfetti();
+      if (soundEnabled) playDoublesSound();
+      setTimeout(function () {
+        els.doublesBadge.classList.remove('doubles-visible');
+      }, 2500);
+    }
+  }, duration);
+}
+
+function resetHistory() {
+  rollHistory = [];
+  rollCount = 0;
+  current = null;
+  saveState(rollHistory, rollCount);
+  els.doublesBadge.classList.remove('doubles-visible');
+  renderHistory();
+  renderResult();
+  els.announcer.textContent = '履歴をリセットしました';
+}
+
+function toggleSound() {
+  soundEnabled = !soundEnabled;
+  safeSet(SOUND_KEY, soundEnabled ? 'on' : 'off');
+  els.soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+  els.soundToggle.setAttribute('aria-pressed', String(soundEnabled));
+  els.soundToggle.setAttribute('aria-label',
+    soundEnabled ? 'サウンドをオフにする' : 'サウンドをオンにする');
+  els.soundToggle.title = soundEnabled ? 'サウンド オン' : 'サウンド オフ';
+}
+
+els.rollButton.addEventListener('click', roll);
+els.resetButton.addEventListener('click', resetHistory);
+els.soundToggle.addEventListener('click', toggleSound);
+
+window.addEventListener('keydown', function (e) {
+  if (e.key !== ' ' && e.key !== 'Enter') return;
+  if (e.repeat) return;
+  var target = e.target;
+  // 他のボタンにフォーカスがある場合は、そのボタンの操作を優先する
+  if (target && target.closest && target.closest('button, a, input, select, textarea')) return;
+  e.preventDefault();
+  roll();
+});
+
+/* 初期表示 */
+if (current) {
+  setDieFace(cube1, current.die1, 0, 1);
+  setDieFace(cube2, current.die2, 0, -1);
+  updateDiceLabels(current.die1, current.die2);
+}
+if (!soundEnabled) {
+  els.soundToggle.textContent = '🔇';
+  els.soundToggle.setAttribute('aria-pressed', 'false');
+  els.soundToggle.setAttribute('aria-label', 'サウンドをオンにする');
+  els.soundToggle.title = 'サウンド オフ';
+}
+renderHistory();
+renderResult();
+</script>
+
+
+</body></html>
